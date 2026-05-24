@@ -1,0 +1,2 @@
+# sthala_naame
+A hobby project to visualize lesser-known local place names that aren't available on Google Maps. 
