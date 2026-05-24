@@ -21,6 +21,7 @@
             padding: 0;
             font-family: 'Segoe UI', 'Noto Sans Kannada', Arial, sans-serif;
             display: flex;
+            flex-direction: row; /* Default side-by-side for desktop */
             height: 100vh;
             color: var(--text-dark);
             overflow: hidden;
@@ -66,6 +67,7 @@
             cursor: pointer;
             transition: all 0.2s ease;
             border-left: 4px solid transparent;
+            -webkit-tap-highlight-color: transparent; /* Clean tap visual on mobile */
         }
 
         .sidebar-item:hover {
@@ -96,7 +98,7 @@
         }
 
         .popup-card {
-            min-width: 220px;
+            min-width: 200px;
             font-family: 'Segoe UI', 'Noto Sans Kannada', sans-serif;
         }
 
@@ -125,6 +127,44 @@
             font-weight: bold;
             width: 80px;
         }
+
+        /* =========================================================================
+           MOBILE RESPONSIVE OVERRIDES (Screens smaller than 768px wide)
+           ========================================================================= */
+        @media (max-width: 768px) {
+            body {
+                flex-direction: column-reverse; /* Puts Map on top, Sidebar at the bottom */
+            }
+
+            #sidebar {
+                width: 100%;
+                height: 45vh; /* Takes up 45% of screen height */
+                border-right: none;
+                border-top: 1px solid var(--border-color);
+                box-shadow: 0 -2px 8px rgba(0,0,0,0.08);
+            }
+
+            #map {
+                width: 100%;
+                height: 55vh; /* Takes up 55% of screen height */
+            }
+
+            .sidebar-header {
+                padding: 12px 16px; /* Slightly more compact header for small screens */
+            }
+
+            .sidebar-header h2 {
+                font-size: 1.1em;
+            }
+
+            .sidebar-header p {
+                font-size: 0.75em;
+            }
+
+            .sidebar-item {
+                padding: 12px 16px; /* Optimized tap target area for fingers */
+            }
+        }
     </style>
 </head>
 <body>
@@ -143,7 +183,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 
     <script>
-        // Paste your exact published CSV URL from Google Sheets here:
         const GOOGLE_SHEETS_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSz1ORCSTudVSqiGX5WQ5pBJTEtsH_jNXR7hCqDVrPCXTRilObPiDJxZoe0bFmG5kUj06UjjATTVT7b/pub?gid=0&single=true&output=csv";
 
         // Initialize Map focusing closely on your coordinates around Kalasa/Samse region
@@ -165,26 +204,22 @@
                 let validPointsCount = 0;
 
                 data.forEach((row, index) => {
-                    // CASE-INSENSITIVE RESOLVER:
-                    // Converts keys to lowercase so 'Location' and 'location' both work seamlessly
+                    // Case-insensitive fallback resolver
                     const normalizedRow = {};
                     Object.keys(row).forEach(key => {
                         normalizedRow[key.toLowerCase().trim()] = row[key];
                     });
 
-                    // Safely extract our required target properties
                     const rawName = normalizedRow['raw'] || '';
                     const filteredName = normalizedRow['filtered'] || '';
                     const locationType = normalizedRow['type'] || '';
                     const coordinateString = normalizedRow['location'] || '';
 
-                    // Decide what to show as title header
                     const displayName = filteredName || rawName || 'ಹೆಸರಿಲ್ಲದ ಸ್ಥಳ';
 
                     let lat = NaN;
                     let lng = NaN;
 
-                    // Parse coordinate values string securely
                     if (coordinateString && coordinateString.toString().includes(',')) {
                         const parts = coordinateString.toString().split(',');
                         if (parts.length >= 2) {
@@ -193,7 +228,6 @@
                         }
                     }
 
-                    // Plot the marker pin only if coordinates evaluate to real numbers
                     if (!isNaN(lat) && !isNaN(lng)) {
                         validPointsCount++;
 
@@ -221,7 +255,6 @@
                             </div>
                         `;
 
-                        // Zoom to point and open modal popup card upon clicking item
                         item.addEventListener('click', () => {
                             if (activeItem) activeItem.classList.remove('active');
                             item.classList.add('active');
@@ -229,6 +262,11 @@
 
                             map.flyTo([lat, lng], 15, { animate: true, duration: 1 });
                             marker.openPopup();
+                            
+                            // MOBILE UX ENHANCEMENT: Smoothly scroll map back into view when an item is tapped
+                            if (window.innerWidth <= 768) {
+                                document.getElementById('map').scrollIntoView({ behavior: 'smooth' });
+                            }
                         });
 
                         listContainer.appendChild(item);
@@ -241,8 +279,7 @@
                     listContainer.innerHTML = `
                         <div style="padding: 20px; color: #d93025; background: #fce8e6; font-size: 0.9em;">
                             <strong>No Coordinates Found:</strong><br><br>
-                            Connected to your live sheet, but could not parse values from the <code>location</code> column.<br><br>
-                            Check if row coordinates look precisely like: <code>13.211156, 75.344111</code>
+                            Connected to your live sheet, but could not parse values from the <code>location</code> column.
                         </div>`;
                 }
             },
