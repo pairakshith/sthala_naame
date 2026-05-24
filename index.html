@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="kn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Google Sheets Dashboard</title>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <style>
+        :root {
+            --primary-color: #1a73e8;
+            --hover-color: #f1f3f4;
+            --border-color: #dadce0;
+            --text-dark: #202124;
+            --text-muted: #5f6368;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', 'Noto Sans Kannada', Arial, sans-serif;
+            display: flex;
+            height: 100vh;
+            color: var(--text-dark);
+            overflow: hidden;
+        }
+
+        #sidebar {
+            width: 350px;
+            height: 100%;
+            background: #ffffff;
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid var(--border-color);
+            box-shadow: 2px 0 8px rgba(0,0,0,0.05);
+            z-index: 1000;
+        }
+
+        .sidebar-header {
+            padding: 20px;
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .sidebar-header h2 {
+            margin: 0;
+            font-size: 1.3em;
+            font-weight: 600;
+        }
+
+        .sidebar-header p {
+            margin: 5px 0 0 0;
+            font-size: 0.85em;
+            opacity: 0.9;
+        }
+
+        #list-container {
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .sidebar-item {
+            padding: 14px 18px;
+            border-bottom: 1px solid var(--border-color);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border-left: 4px solid transparent;
+        }
+
+        .sidebar-item:hover {
+            background-color: var(--hover-color);
+        }
+
+        .sidebar-item.active {
+            background-color: #e8f0fe;
+            border-left: 4px solid var(--primary-color);
+        }
+
+        .location-title {
+            font-size: 1.05em;
+            font-weight: 600;
+            color: var(--text-dark);
+            margin-bottom: 4px;
+        }
+
+        .location-details {
+            font-size: 0.85em;
+            color: var(--text-muted);
+            line-height: 1.4;
+        }
+
+        #map {
+            flex: 1;
+            height: 100%;
+        }
+
+        .popup-card {
+            min-width: 220px;
+            font-family: 'Segoe UI', 'Noto Sans Kannada', sans-serif;
+        }
+
+        .popup-card h3 {
+            margin: 0 0 6px 0;
+            color: var(--primary-color);
+            font-size: 1.1em;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 4px;
+        }
+
+        .popup-table {
+            width: 100%;
+            font-size: 0.9em;
+            border-collapse: collapse;
+            margin-top: 5px;
+        }
+
+        .popup-table td {
+            padding: 4px 0;
+            vertical-align: top;
+        }
+
+        .label {
+            color: var(--text-muted);
+            font-weight: bold;
+            width: 80px;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="sidebar">
+        <div class="sidebar-header">
+            <h2>ಸ್ಥಳಗಳ ವಿವರ ಡ್ಯಾಶ್‌ಬೋರ್ಡ್</h2>
+            <p>Direct Google Sheets Link Sync</p>
+        </div>
+        <div id="list-container"></div>
+    </div>
+
+    <div id="map"></div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+
+    <script>
+        // Paste your exact published CSV URL from Google Sheets here:
+        const GOOGLE_SHEETS_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSz1ORCSTudVSqiGX5WQ5pBJTEtsH_jNXR7hCqDVrPCXTRilObPiDJxZoe0bFmG5kUj06UjjATTVT7b/pub?gid=0&single=true&output=csv";
+
+        // Initialize Map focusing closely on your coordinates around Kalasa/Samse region
+        const map = L.map('map').setView([13.2140, 75.3300], 12);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        const listContainer = document.getElementById('list-container');
+        let activeItem = null;
+
+        Papa.parse(GOOGLE_SHEETS_URL, {
+            download: true,
+            header: true,
+            skipEmptyLines: true,
+            complete: function(results) {
+                const data = results.data;
+                let validPointsCount = 0;
+
+                data.forEach((row, index) => {
+                    // CASE-INSENSITIVE RESOLVER:
+                    // Converts keys to lowercase so 'Location' and 'location' both work seamlessly
+                    const normalizedRow = {};
+                    Object.keys(row).forEach(key => {
+                        normalizedRow[key.toLowerCase().trim()] = row[key];
+                    });
+
+                    // Safely extract our required target properties
+                    const rawName = normalizedRow['raw'] || '';
+                    const filteredName = normalizedRow['filtered'] || '';
+                    const locationType = normalizedRow['type'] || '';
+                    const coordinateString = normalizedRow['location'] || '';
+
+                    // Decide what to show as title header
+                    const displayName = filteredName || rawName || 'ಹೆಸರಿಲ್ಲದ ಸ್ಥಳ';
+
+                    let lat = NaN;
+                    let lng = NaN;
+
+                    // Parse coordinate values string securely
+                    if (coordinateString && coordinateString.toString().includes(',')) {
+                        const parts = coordinateString.toString().split(',');
+                        if (parts.length >= 2) {
+                            lat = parseFloat(parts[0].trim());
+                            lng = parseFloat(parts[1].trim());
+                        }
+                    }
+
+                    // Plot the marker pin only if coordinates evaluate to real numbers
+                    if (!isNaN(lat) && !isNaN(lng)) {
+                        validPointsCount++;
+
+                        const marker = L.marker([lat, lng]).addTo(map);
+
+                        const popupContent = `
+                            <div class="popup-card">
+                                <h3>${displayName}</h3>
+                                <table class="popup-table">
+                                    ${rawName ? `<tr><td class="label">ಮೂಲ ಹೆಸರು:</td><td>${rawName}</td></tr>` : ''}
+                                    ${locationType ? `<tr><td class="label">ಪ್ರಕಾರ:</td><td>${locationType}</td></tr>` : ''}
+                                    <tr><td class="label">ಸ್ಥಳ ಗುಣಾಂಕ:</td><td>${lat.toFixed(5)}, ${lng.toFixed(5)}</td></tr>
+                                </table>
+                            </div>
+                        `;
+                        marker.bindPopup(popupContent);
+
+                        const item = document.createElement('div');
+                        item.className = 'sidebar-item';
+                        item.innerHTML = `
+                            <div class="location-title">${displayName}</div>
+                            <div class="location-details">
+                                ${locationType ? `ಪ್ರಕಾರ: ${locationType}` : ''}
+                                <div style="color:#888; font-size:0.85em; margin-top:2px;">📍 ${lat.toFixed(5)}, ${lng.toFixed(5)}</div>
+                            </div>
+                        `;
+
+                        // Zoom to point and open modal popup card upon clicking item
+                        item.addEventListener('click', () => {
+                            if (activeItem) activeItem.classList.remove('active');
+                            item.classList.add('active');
+                            activeItem = item;
+
+                            map.flyTo([lat, lng], 15, { animate: true, duration: 1 });
+                            marker.openPopup();
+                        });
+
+                        listContainer.appendChild(item);
+                    } else {
+                        console.warn(`Row ${index + 2} (${displayName}) skipped due to empty/invalid coordinates.`);
+                    }
+                });
+
+                if (validPointsCount === 0) {
+                    listContainer.innerHTML = `
+                        <div style="padding: 20px; color: #d93025; background: #fce8e6; font-size: 0.9em;">
+                            <strong>No Coordinates Found:</strong><br><br>
+                            Connected to your live sheet, but could not parse values from the <code>location</code> column.<br><br>
+                            Check if row coordinates look precisely like: <code>13.211156, 75.344111</code>
+                        </div>`;
+                }
+            },
+            error: function(err) {
+                listContainer.innerHTML = `<div style="padding:20px; color:red;">Network Error: Failed to fetch live rows.</div>`;
+            }
+        });
+    </script>
+</body>
+</html>
