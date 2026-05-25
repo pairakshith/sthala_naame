@@ -67,7 +67,7 @@
             cursor: pointer;
             transition: all 0.2s ease;
             border-left: 4px solid transparent;
-            -webkit-tap-highlight-color: transparent; /* Clean tap visual on mobile */
+            -webkit-tap-highlight-color: transparent; 
         }
 
         .sidebar-item:hover {
@@ -128,17 +128,15 @@
             width: 80px;
         }
 
-        /* =========================================================================
-           MOBILE RESPONSIVE OVERRIDES (Screens smaller than 768px wide)
-           ========================================================================= */
+        /* Mobile Adjustments styling layer */
         @media (max-width: 768px) {
             body {
-                flex-direction: column-reverse; /* Puts Map on top, Sidebar at the bottom */
+                flex-direction: column-reverse; 
             }
 
             #sidebar {
                 width: 100%;
-                height: 45vh; /* Takes up 45% of screen height */
+                height: 45vh; 
                 border-right: none;
                 border-top: 1px solid var(--border-color);
                 box-shadow: 0 -2px 8px rgba(0,0,0,0.08);
@@ -146,11 +144,11 @@
 
             #map {
                 width: 100%;
-                height: 55vh; /* Takes up 55% of screen height */
+                height: 55vh; 
             }
 
             .sidebar-header {
-                padding: 12px 16px; /* Slightly more compact header for small screens */
+                padding: 12px 16px; 
             }
 
             .sidebar-header h2 {
@@ -162,7 +160,7 @@
             }
 
             .sidebar-item {
-                padding: 12px 16px; /* Optimized tap target area for fingers */
+                padding: 12px 16px; 
             }
         }
     </style>
@@ -171,7 +169,7 @@
 
     <div id="sidebar">
         <div class="sidebar-header">
-            <h2>ಸ್ಥಳಗಳ ವಿವರ ಡ್ಯಾಶ್‌ಬೋರ್ಡ್</h2>
+            <h2>ಸ್ಥಳಗಳ ವಿವರ: ಡ್ಯಾಶ್‌ಬೋರ್ಡ್</h2>
             <p>Direct Google Sheets Link Sync</p>
         </div>
         <div id="list-container"></div>
@@ -185,15 +183,44 @@
     <script>
         const GOOGLE_SHEETS_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSz1ORCSTudVSqiGX5WQ5pBJTEtsH_jNXR7hCqDVrPCXTRilObPiDJxZoe0bFmG5kUj06UjjATTVT7b/pub?gid=0&single=true&output=csv";
 
-        // Initialize Map focusing closely on your coordinates around Kalasa/Samse region
-        const map = L.map('map').setView([13.2140, 75.3300], 12);
-
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        // Define Three Independent Data Map Tile Libraries
+        const standardMap = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '© OpenStreetMap contributors'
+        });
+
+        const esriSatellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            attribution: 'Tiles © Esri — Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and GIS Community'
+        });
+
+        const topographicMap = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+            maxZoom: 17,
+            attribution: 'Map data: © OSM contributors, SRTM | Map style: © OpenTopoMap (CC-BY-SA)'
+        });
+
+        // Initialize Map focusing closely on your coordinates around Kalasa/Samse region
+        const map = L.map('map', {
+            center: [13.2140, 75.3300],
+            zoom: 12,
+            layers: [standardMap] 
+        });
+
+        // Map data configuration bundle object
+        const baseMapLibraries = {
+            "🗺️ Standard Map": standardMap,
+            "🛰️ Satellite View": esriSatellite,
+            "⛰️ Terrain View": topographicMap
+        };
+
+        L.control.layers(baseMapLibraries, null, { 
+            position: 'topright', 
+            collapsed: true 
         }).addTo(map);
 
         const listContainer = document.getElementById('list-container');
+        
+        // CRITICAL VARIABLES INITIALIZED HERE:
         let activeItem = null;
+        let lockedMarker = null; // Keeps track of what is clicked so hover doesn't override it
 
         Papa.parse(GOOGLE_SHEETS_URL, {
             download: true,
@@ -204,7 +231,6 @@
                 let validPointsCount = 0;
 
                 data.forEach((row, index) => {
-                    // Case-insensitive fallback resolver
                     const normalizedRow = {};
                     Object.keys(row).forEach(key => {
                         normalizedRow[key.toLowerCase().trim()] = row[key];
@@ -239,7 +265,7 @@
                                 <table class="popup-table">
                                     ${rawName ? `<tr><td class="label">ಮೂಲ ಹೆಸರು:</td><td>${rawName}</td></tr>` : ''}
                                     ${locationType ? `<tr><td class="label">ಪ್ರಕಾರ:</td><td>${locationType}</td></tr>` : ''}
-                                    <tr><td class="label">ಸ್ಥಳ ಗುಣಾಂಕ:</td><td>${lat.toFixed(5)}, ${lng.toFixed(5)}</td></tr>
+                                    <tr><td class="label">ನಿರ್ದೇಶಾಂಕಗಳು:</td><td>${lat.toFixed(5)}, ${lng.toFixed(5)}</td></tr>
                                 </table>
                             </div>
                         `;
@@ -255,15 +281,41 @@
                             </div>
                         `;
 
+                        // =========================================================================
+                        // FIXED HOVER & CLICK HANDLERS
+                        // =========================================================================
+
+                        // 1. HOVER IN: Pan and open a temporary preview popup
+                        item.addEventListener('mouseenter', () => {
+                            // If this location isn't already locked by a click, show a quick preview
+                            if (lockedMarker !== marker) {
+                                map.panTo([lat, lng]);
+                                marker.openPopup();
+                            }
+                        });
+
+                        // 2. HOVER OUT: Close the preview popup, unless the user clicked to lock it
+                        item.addEventListener('mouseleave', () => {
+                            if (lockedMarker !== marker) {
+                                marker.closePopup();
+                                // If there is another locked item active elsewhere, return to it
+                                if (lockedMarker) {
+                                    lockedMarker.openPopup();
+                                }
+                            }
+                        });
+
+                        // 3. CLICK: Stabilize, lock, zoom in deep, and style active item
                         item.addEventListener('click', () => {
                             if (activeItem) activeItem.classList.remove('active');
                             item.classList.add('active');
                             activeItem = item;
+                            lockedMarker = marker; // Lock this marker down permanently
 
                             map.flyTo([lat, lng], 15, { animate: true, duration: 1 });
                             marker.openPopup();
                             
-                            // MOBILE UX ENHANCEMENT: Smoothly scroll map back into view when an item is tapped
+                            // Mobile responsive screen adjustment
                             if (window.innerWidth <= 768) {
                                 document.getElementById('map').scrollIntoView({ behavior: 'smooth' });
                             }
@@ -273,6 +325,14 @@
                     } else {
                         console.warn(`Row ${index + 2} (${displayName}) skipped due to empty/invalid coordinates.`);
                     }
+                });
+
+                // Clear the locked state if a user clicks directly on the empty map space
+                map.on('click', () => {
+                    if (activeItem) activeItem.classList.remove('active');
+                    activeItem = null;
+                    lockedMarker = null;
+                    map.closePopup();
                 });
 
                 if (validPointsCount === 0) {
