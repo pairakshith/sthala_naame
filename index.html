@@ -423,6 +423,9 @@
                 header: true,
                 skipEmptyLines: true,
                 complete: function(results) {
+                    if (results.errors && results.errors.length > 0) {
+                        console.warn(`CSV parsing encountered ${results.errors.length} error(s):`, results.errors);
+                    }
                     let hasData = false;
                     
                     results.data.forEach((row, index) => {
@@ -495,6 +498,10 @@
                     if(!hasData) {
                         listContainer.innerHTML = `<div style="padding: 24px; text-align: center; color: var(--text-muted); font-size: 0.95em;">ಯಾವುದೇ ಸ್ಥಳಗಳು ಪಟ್ಟಿಯಲ್ಲಿಲ್ಲ.</div>`;
                     }
+                },
+                error: function(error) {
+                    console.error('Failed to load data:', error);
+                    listContainer.innerHTML = `<div style="padding: 24px; text-align: center; color: var(--text-muted); font-size: 0.95em;">ಡೇಟಾ ಲೋಡ್ ಆಗಲಿಲ್ಲ. ದಯವಿಟ್ಟು ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.</div>`;
                 }
             });
         }
