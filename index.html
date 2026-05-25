@@ -432,8 +432,10 @@
                         const locationType = normalizedRow['type'] || '';
                         const coordinateString = normalizedRow['location'] || '';
                         const status = normalizedRow['status'] || 'Pending';
+                        const normalizedStatus = status.toString().trim().toLowerCase();
+                        const approvedStatus = 'approved';
 
-                        if (isPendingView && status === "Approved") return;
+                        if (isPendingView && normalizedStatus === approvedStatus) return;
 
                         const displayName = filteredName || rawName || 'ಹೆಸರಿಲ್ಲದ ಸ್ಥಳ';
                         let lat = NaN, lng = NaN;
