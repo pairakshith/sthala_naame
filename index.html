@@ -371,7 +371,7 @@
         const listContainer = document.getElementById('list-container');
         let activeItem = null;
         let lockedMarker = null;
-        let markerClusterGroup = []; 
+        let markerClusterGroup = L.layerGroup().addTo(map); 
         let currentView = 'live'; 
         let loadRequestId = 0;
 
