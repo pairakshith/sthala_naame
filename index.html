@@ -325,8 +325,8 @@
             </button>
             
             <div class="view-toggle-container">
-                <button class="toggle-btn active" id="btn-live" onclick="switchView('live')">✅ Approved</button>
-                <button class="toggle-btn" id="btn-pending" onclick="switchView('pending')">⏳ Pending Queue</button>
+                <button class="toggle-btn active" id="btn-live">✅ Approved</button>
+                <button class="toggle-btn" id="btn-pending">⏳ Pending Queue</button>
             </div>
         </div>
         <div id="list-container"></div>
@@ -348,10 +348,13 @@
             window.open(GOOGLE_FORM_URL, '_blank');
         });
 
+        document.getElementById('btn-live').addEventListener('click', () => switchView('live'));
+        document.getElementById('btn-pending').addEventListener('click', () => switchView('pending'));
+
         // Map setup
-        const standardMap = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OSM' });
-        const esriSatellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { attribution: '© Esri' });
-        const topographicMap = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', { maxZoom: 17, attribution: '© OpenTopoMap' });
+        const standardMap = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' });
+        const esriSatellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community' });
+        const topographicMap = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', { maxZoom: 17, attribution: 'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, <a href="http://viewfinderpanoramas.org">SRTM</a> | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)' });
 
         const map = L.map('map', { 
             center: [13.2140, 75.3300], 
@@ -458,8 +461,8 @@
                                 <div class="popup-card">
                                     <h3>${displayName} ${isPendingView ? '(⏳ Pending)' : ''}</h3>
                                     <table class="popup-table">
-                                        <tr><td class="label">ಮೂಲ ಹೆಸರು:</td><td>${rawName}</td></tr>
-                                        <tr><td class="label">ಪ್ರಕಾರ:</td><td>${locationType}</td></tr>
+                                        ${rawName ? `<tr><td class="label">ಮೂಲ ಹೆಸರು:</td><td>${rawName}</td></tr>` : ''}
+                                        ${locationType ? `<tr><td class="label">ಪ್ರಕಾರ:</td><td>${locationType}</td></tr>` : ''}
                                         <tr><td class="label">ಸ್ಥಳ ಬಿಂದು:</td><td>${lat.toFixed(4)}, ${lng.toFixed(4)}</td></tr>
                                     </table>
                                 </div>`;
