@@ -3,166 +3,312 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Live Google Sheets Dashboard</title>
+    <title>ಸ್ಥಳಗಳ ವಿವರ: Live Heritage Map</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Noto+Sans+Kannada:wght@400;500;600;700&display=swap" rel="stylesheet">
     
     <style>
         :root {
-            --primary-color: #1a73e8;
-            --hover-color: #f1f3f4;
-            --border-color: #dadce0;
-            --text-dark: #202124;
-            --text-muted: #5f6368;
+            --primary-color: #1b4332;       /* Deep Forest Green */
+            --accent-color: #d4a373;        /* Warm Earth Ochre */
+            --pending-color: #e67e22;       /* Vibrant Amber */
+            --bg-light: #f8f9fa;            /* Soft off-white */
+            --text-main: #2d3142;           /* Charcoal Slate */
+            --text-muted: #6c757d;          /* Cool Gray */
+            --border-soft: #e9ecef;         /* Crisp thin borders */
+            --radius-md: 10px;
+            --radius-lg: 16px;
+            --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.1);
+        }
+
+        * {
+            box-sizing: border-box;
+            font-family: 'Plus Jakarta Sans', 'Noto Sans Kannada', sans-serif;
         }
 
         body {
             margin: 0;
             padding: 0;
-            font-family: 'Segoe UI', 'Noto Sans Kannada', Arial, sans-serif;
             display: flex;
-            flex-direction: row; /* Default side-by-side for desktop */
+            flex-direction: row; 
             height: 100vh;
-            color: var(--text-dark);
+            color: var(--text-main);
+            background-color: var(--bg-light);
             overflow: hidden;
         }
 
+        /* --- SIDEBAR DESIGN --- */
         #sidebar {
-            width: 350px;
+            width: 380px;
             height: 100%;
             background: #ffffff;
             display: flex;
             flex-direction: column;
-            border-right: 1px solid var(--border-color);
-            box-shadow: 2px 0 8px rgba(0,0,0,0.05);
+            border-right: 1px solid var(--border-soft);
+            box-shadow: 4px 0 24px rgba(0,0,0,0.03);
             z-index: 1000;
+            transition: all 0.3s ease;
         }
 
         .sidebar-header {
-            padding: 20px;
+            padding: 24px;
             background: var(--primary-color);
-            color: white;
+            color: #ffffff;
+            border-bottom-right-radius: var(--radius-lg);
+            position: relative;
+            box-shadow: var(--shadow-sm);
         }
 
         .sidebar-header h2 {
             margin: 0;
-            font-size: 1.3em;
-            font-weight: 600;
+            font-size: 1.4em;
+            font-weight: 700;
+            letter-spacing: -0.3px;
+            line-height: 1.3;
         }
 
         .sidebar-header p {
-            margin: 5px 0 0 0;
+            margin: 6px 0 0 0;
             font-size: 0.85em;
-            opacity: 0.9;
+            opacity: 0.75;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 500;
         }
 
+        /* --- NEW: USER FORM SUBMISSION BUTTON --- */
+        .submit-data-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+            background: var(--accent-color);
+            color: var(--primary-color);
+            border: none;
+            padding: 12px;
+            margin-top: 16px;
+            border-radius: var(--radius-md);
+            font-size: 0.95em;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: var(--shadow-sm);
+            transition: transform 0.2s ease, background-color 0.2s ease;
+        }
+
+        .submit-data-btn:hover {
+            background-color: #c29263;
+            transform: translateY(-1px);
+        }
+
+        .submit-data-btn:active {
+            transform: translateY(1px);
+        }
+
+        /* View Toggle Switcher Styling */
+        .view-toggle-container {
+            display: flex;
+            background: rgba(255, 255, 255, 0.1);
+            margin-top: 12px;
+            border-radius: var(--radius-md);
+            padding: 4px;
+            backdrop-filter: blur(4px);
+        }
+
+        .toggle-btn {
+            flex: 1;
+            border: none;
+            background: transparent;
+            color: #ffffff;
+            padding: 8px;
+            font-size: 0.85em;
+            cursor: pointer;
+            border-radius: 6px;
+            font-weight: 600;
+            opacity: 0.7;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .toggle-btn.active {
+            background: #ffffff;
+            color: var(--primary-color);
+            opacity: 1;
+            box-shadow: var(--shadow-sm);
+        }
+
+        /* --- CONTAINER LIST ITEMS --- */
         #list-container {
             flex: 1;
             overflow-y: auto;
+            padding: 12px;
+            background: var(--bg-light);
         }
 
         .sidebar-item {
-            padding: 14px 18px;
-            border-bottom: 1px solid var(--border-color);
+            background: #ffffff;
+            padding: 16px;
+            border-radius: var(--radius-md);
+            margin-bottom: 10px;
             cursor: pointer;
-            transition: all 0.2s ease;
-            border-left: 4px solid transparent;
-            -webkit-tap-highlight-color: transparent; /* Clean tap visual on mobile */
+            border: 1px solid var(--border-soft);
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+            -webkit-tap-highlight-color: transparent; 
         }
 
         .sidebar-item:hover {
-            background-color: var(--hover-color);
+            transform: translateY(-2px);
+            border-color: var(--accent-color);
+            box-shadow: var(--shadow-sm);
         }
 
         .sidebar-item.active {
-            background-color: #e8f0fe;
-            border-left: 4px solid var(--primary-color);
+            background-color: #ffffff;
+            border: 2px solid var(--primary-color);
+            box-shadow: var(--shadow-md);
+        }
+
+        .sidebar-item.active::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            height: 100%;
+            width: 5px;
+            background: var(--accent-color);
         }
 
         .location-title {
-            font-size: 1.05em;
-            font-weight: 600;
-            color: var(--text-dark);
-            margin-bottom: 4px;
+            font-size: 1.1em;
+            font-weight: 700;
+            color: var(--text-main);
+            margin-bottom: 6px;
         }
 
         .location-details {
             font-size: 0.85em;
             color: var(--text-muted);
-            line-height: 1.4;
+            line-height: 1.5;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
         }
 
+        .coordinate-pill {
+            display: inline-flex;
+            align-items: center;
+            background: #f1f3f5;
+            padding: 2px 8px;
+            border-radius: 20px;
+            width: fit-content;
+            font-family: monospace;
+            color: #495057;
+            margin-top: 4px;
+        }
+
+        .status-badge {
+            display: inline-block;
+            font-size: 0.75em;
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-weight: 600;
+            width: fit-content;
+        }
+        .badge-pending { background: #ffeacc; color: #c45e00; }
+        .badge-duplicate { background: #fce8e6; color: #a51d24; }
+
+        /* --- LEAFLET OVERRIDES --- */
         #map {
             flex: 1;
             height: 100%;
         }
 
+        .leaflet-control-layers {
+            background: rgba(255, 255, 255, 0.85) !important;
+            backdrop-filter: blur(8px);
+            border: none !important;
+            box-shadow: var(--shadow-md) !important;
+            border-radius: var(--radius-md) !important;
+            padding: 10px !important;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
         .popup-card {
-            min-width: 200px;
-            font-family: 'Segoe UI', 'Noto Sans Kannada', sans-serif;
+            min-width: 220px;
+            padding: 4px;
         }
 
         .popup-card h3 {
-            margin: 0 0 6px 0;
+            margin: 0 0 8px 0;
             color: var(--primary-color);
-            font-size: 1.1em;
-            border-bottom: 1px solid #eee;
-            padding-bottom: 4px;
+            font-size: 1.2em;
+            font-weight: 700;
+            border-bottom: 2px solid var(--accent-color);
+            padding-bottom: 6px;
         }
 
         .popup-table {
             width: 100%;
             font-size: 0.9em;
             border-collapse: collapse;
-            margin-top: 5px;
         }
 
         .popup-table td {
-            padding: 4px 0;
+            padding: 6px 0;
             vertical-align: top;
         }
 
         .label {
             color: var(--text-muted);
-            font-weight: bold;
-            width: 80px;
+            font-weight: 600;
+            width: 90px;
         }
 
-        /* =========================================================================
-           MOBILE RESPONSIVE OVERRIDES (Screens smaller than 768px wide)
-           ========================================================================= */
+        /* --- RESPONSIVE MOBILE LAYER --- */
         @media (max-width: 768px) {
             body {
-                flex-direction: column-reverse; /* Puts Map on top, Sidebar at the bottom */
+                flex-direction: column-reverse; 
             }
 
             #sidebar {
                 width: 100%;
-                height: 45vh; /* Takes up 45% of screen height */
+                height: 45vh; 
                 border-right: none;
-                border-top: 1px solid var(--border-color);
-                box-shadow: 0 -2px 8px rgba(0,0,0,0.08);
+                border-top: 1px solid var(--border-soft);
+                box-shadow: 0 -8px 32px rgba(0,0,0,0.08);
             }
 
             #map {
                 width: 100%;
-                height: 55vh; /* Takes up 55% of screen height */
+                height: 55vh; 
             }
 
             .sidebar-header {
-                padding: 12px 16px; /* Slightly more compact header for small screens */
+                padding: 16px;
+                border-bottom-right-radius: 0px;
             }
 
             .sidebar-header h2 {
-                font-size: 1.1em;
+                font-size: 1.15em;
             }
 
-            .sidebar-header p {
-                font-size: 0.75em;
+            .submit-data-btn {
+                padding: 10px;
+                font-size: 0.85em;
+                margin-top: 10px;
+            }
+
+            #list-container {
+                padding: 10px;
             }
 
             .sidebar-item {
-                padding: 12px 16px; /* Optimized tap target area for fingers */
+                padding: 14px;
+                margin-bottom: 8px;
             }
         }
     </style>
@@ -170,9 +316,18 @@
 <body>
 
     <div id="sidebar">
-        <div class="sidebar-header">
-            <h2>ಸ್ಥಳಗಳ ವಿವರ ಡ್ಯಾಶ್‌ಬೋರ್ಡ್</h2>
-            <p>Direct Google Sheets Link Sync</p>
+        <div class="sidebar-header" id="header-bg">
+            <h2 id="header-title">ಸ್ಥಳಗಳ ವಿವರ: ಪ್ರಕಟಿತ ನಕ್ಷೆ</h2>
+            <p>Direct Google Sheets Sync</p>
+            
+            <button class="submit-data-btn" id="openFormBtn">
+                📍 ಹೊಸ ಸ್ಥಳ ಸೇರಿಸಿ (Add Data)
+            </button>
+            
+            <div class="view-toggle-container">
+                <button class="toggle-btn active" id="btn-live">✅ Approved</button>
+                <button class="toggle-btn" id="btn-pending">⏳ Pending Queue</button>
+            </div>
         </div>
         <div id="list-container"></div>
     </div>
@@ -183,110 +338,179 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 
     <script>
-        const GOOGLE_SHEETS_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSz1ORCSTudVSqiGX5WQ5pBJTEtsH_jNXR7hCqDVrPCXTRilObPiDJxZoe0bFmG5kUj06UjjATTVT7b/pub?gid=0&single=true&output=csv";
+        // PASTE YOUR THREE SYSTEM CONFIGURATION TARGET LINKS HERE
+        const MASTER_DATA_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSz1ORCSTudVSqiGX5WQ5pBJTEtsH_jNXR7hCqDVrPCXTRilObPiDJxZoe0bFmG5kUj06UjjATTVT7b/pub?gid=957411319&single=true&output=csv";
+        const SUBMISSIONS_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSz1ORCSTudVSqiGX5WQ5pBJTEtsH_jNXR7hCqDVrPCXTRilObPiDJxZoe0bFmG5kUj06UjjATTVT7b/pub?gid=1781653464&single=true&output=csv";
+        const GOOGLE_FORM_URL = "https://forms.gle/syRfc1LMquVyBD7c8";
 
-        // Initialize Map focusing closely on your coordinates around Kalasa/Samse region
-        const map = L.map('map').setView([13.2140, 75.3300], 12);
+        // Connect Submission button to target URL window
+        document.getElementById('openFormBtn').addEventListener('click', () => {
+            window.open(GOOGLE_FORM_URL, '_blank');
+        });
 
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap contributors'
-        }).addTo(map);
+        document.getElementById('btn-live').addEventListener('click', () => switchView('live'));
+        document.getElementById('btn-pending').addEventListener('click', () => switchView('pending'));
+
+        // Map setup
+        const standardMap = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' });
+        const esriSatellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community' });
+        const topographicMap = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', { maxZoom: 17, attribution: 'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, <a href="http://viewfinderpanoramas.org">SRTM</a> | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)' });
+
+        const map = L.map('map', { 
+            center: [13.2140, 75.3300], 
+            zoom: 12, 
+            layers: [standardMap],
+            zoomControl: false 
+        });
+        
+        L.control.zoom({ position: 'topright' }).addTo(map);
+
+        L.control.layers({
+            "🗺️ Standard Map": standardMap, 
+            "🛰️ Satellite View": esriSatellite,
+            "⛰️ Terrain Guide": topographicMap
+        }, null, { position: 'topright', collapsed: true }).addTo(map);
 
         const listContainer = document.getElementById('list-container');
         let activeItem = null;
+        let lockedMarker = null;
+        let markerClusterGroup = L.layerGroup().addTo(map); 
+        let currentView = 'live'; 
+        let loadRequestId = 0;
 
-        Papa.parse(GOOGLE_SHEETS_URL, {
-            download: true,
-            header: true,
-            skipEmptyLines: true,
-            complete: function(results) {
-                const data = results.data;
-                let validPointsCount = 0;
+        // UI convenience toggle: append ?admin to the URL to show the pending view.
+        // This is not a security control; restrict Google Sheet permissions to limit data access.
+        function showAdminToggle() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const toggleContainer = document.querySelector('.view-toggle-container');
+            toggleContainer.style.display = urlParams.has('admin') ? 'flex' : 'none';
+        }
 
-                data.forEach((row, index) => {
-                    // Case-insensitive fallback resolver
-                    const normalizedRow = {};
-                    Object.keys(row).forEach(key => {
-                        normalizedRow[key.toLowerCase().trim()] = row[key];
-                    });
+        showAdminToggle();
+        loadMapData(MASTER_DATA_URL, false);
 
-                    const rawName = normalizedRow['raw'] || '';
-                    const filteredName = normalizedRow['filtered'] || '';
-                    const locationType = normalizedRow['type'] || '';
-                    const coordinateString = normalizedRow['location'] || '';
+        function switchView(viewTarget) {
+            if (currentView === viewTarget) return;
+            currentView = viewTarget;
+            
+            markerClusterGroup.forEach(m => map.removeLayer(m));
+            markerClusterGroup = [];
+            listContainer.innerHTML = "";
+            activeItem = null;
+            lockedMarker = null;
 
-                    const displayName = filteredName || rawName || 'ಹೆಸರಿಲ್ಲದ ಸ್ಥಳ';
+            const headerBg = document.getElementById('header-bg');
+            const headerTitle = document.getElementById('header-title');
+            
+            document.getElementById('btn-live').classList.toggle('active', viewTarget === 'live');
+            document.getElementById('btn-pending').classList.toggle('active', viewTarget === 'pending');
 
-                    let lat = NaN;
-                    let lng = NaN;
+            if (viewTarget === 'live') {
+                headerBg.style.backgroundColor = "var(--primary-color)";
+                headerTitle.innerText = "ಸ್ಥಳಗಳ ವಿವರ: ಪ್ರಕಟಿತ ನಕ್ಷೆ";
+                loadMapData(MASTER_DATA_URL, false);
+            } else {
+                headerBg.style.backgroundColor = "var(--pending-color)";
+                headerTitle.innerText = "ಪರಿಶೀಲನೆಯಲ್ಲಿರುವ ಸ್ಥಳಗಳು";
+                loadMapData(SUBMISSIONS_URL, true);
+            }
+        }
 
-                    if (coordinateString && coordinateString.toString().includes(',')) {
-                        const parts = coordinateString.toString().split(',');
-                        if (parts.length >= 2) {
+        function loadMapData(targetUrl, isPendingView) {
+            const requestId = ++loadRequestId;
+            Papa.parse(targetUrl, {
+                download: true,
+                header: true,
+                skipEmptyLines: true,
+                complete: function(results) {
+                    if (requestId !== loadRequestId) return; // Discard stale response if a newer request has been initiated
+                    if (results.errors && results.errors.length > 0) {
+                        console.warn(`CSV parsing encountered ${results.errors.length} error(s):`, results.errors);
+                    }
+                    let hasData = false;
+                    
+                    results.data.forEach((row, index) => {
+                        const normalizedRow = {};
+                        Object.keys(row).forEach(key => { normalizedRow[key.toLowerCase().trim()] = row[key]; });
+
+                        const rawName = normalizedRow['raw'] || '';
+                        const filteredName = normalizedRow['filtered'] || '';
+                        const locationType = normalizedRow['type'] || '';
+                        const coordinateString = normalizedRow['location'] || '';
+                        const status = normalizedRow['status'] || 'Pending';
+                        const normalizedStatus = status.toString().trim().toLowerCase();
+                        const approvedStatus = 'approved';
+
+                        if (isPendingView && normalizedStatus === approvedStatus) return;
+
+                        const displayName = filteredName || rawName || 'ಹೆಸರಿಲ್ಲದ ಸ್ಥಳ';
+                        let lat = NaN, lng = NaN;
+
+                        if (coordinateString && coordinateString.toString().includes(',')) {
+                            const parts = coordinateString.toString().split(',');
                             lat = parseFloat(parts[0].trim());
                             lng = parseFloat(parts[1].trim());
                         }
-                    }
 
-                    if (!isNaN(lat) && !isNaN(lng)) {
-                        validPointsCount++;
+                        if (!isNaN(lat) && !isNaN(lng)) {
+                            hasData = true;
+                            const marker = L.marker([lat, lng]).addTo(map);
+                            markerClusterGroup.push(marker);
 
-                        const marker = L.marker([lat, lng]).addTo(map);
+                            let popupContent = `
+                                <div class="popup-card">
+                                    <h3>${displayName} ${isPendingView ? '(⏳ Pending)' : ''}</h3>
+                                    <table class="popup-table">
+                                        ${rawName ? `<tr><td class="label">ಮೂಲ ಹೆಸರು:</td><td>${rawName}</td></tr>` : ''}
+                                        ${locationType ? `<tr><td class="label">ಪ್ರಕಾರ:</td><td>${locationType}</td></tr>` : ''}
+                                        <tr><td class="label">ಸ್ಥಳ ಬಿಂದು:</td><td>${lat.toFixed(4)}, ${lng.toFixed(4)}</td></tr>
+                                    </table>
+                                </div>`;
+                            marker.bindPopup(popupContent);
 
-                        const popupContent = `
-                            <div class="popup-card">
-                                <h3>${displayName}</h3>
-                                <table class="popup-table">
-                                    ${rawName ? `<tr><td class="label">ಮೂಲ ಹೆಸರು:</td><td>${rawName}</td></tr>` : ''}
-                                    ${locationType ? `<tr><td class="label">ಪ್ರಕಾರ:</td><td>${locationType}</td></tr>` : ''}
-                                    <tr><td class="label">ಸ್ಥಳ ಗುಣಾಂಕ:</td><td>${lat.toFixed(5)}, ${lng.toFixed(5)}</td></tr>
-                                </table>
-                            </div>
-                        `;
-                        marker.bindPopup(popupContent);
-
-                        const item = document.createElement('div');
-                        item.className = 'sidebar-item';
-                        item.innerHTML = `
-                            <div class="location-title">${displayName}</div>
-                            <div class="location-details">
-                                ${locationType ? `ಪ್ರಕಾರ: ${locationType}` : ''}
-                                <div style="color:#888; font-size:0.85em; margin-top:2px;">📍 ${lat.toFixed(5)}, ${lng.toFixed(5)}</div>
-                            </div>
-                        `;
-
-                        item.addEventListener('click', () => {
-                            if (activeItem) activeItem.classList.remove('active');
-                            item.classList.add('active');
-                            activeItem = item;
-
-                            map.flyTo([lat, lng], 15, { animate: true, duration: 1 });
-                            marker.openPopup();
+                            const item = document.createElement('div');
+                            item.className = 'sidebar-item';
                             
-                            // MOBILE UX ENHANCEMENT: Smoothly scroll map back into view when an item is tapped
-                            if (window.innerWidth <= 768) {
-                                document.getElementById('map').scrollIntoView({ behavior: 'smooth' });
+                            let badgeHTML = '';
+                            if (isPendingView) {
+                                const isDup = status.toLowerCase().includes('duplicate');
+                                badgeHTML = `<span class="status-badge ${isDup ? 'badge-duplicate' : 'badge-pending'}">${isDup ? '⚠️ Duplicate' : '⏳ Pending Approval'}</span>`;
                             }
-                        });
 
-                        listContainer.appendChild(item);
-                    } else {
-                        console.warn(`Row ${index + 2} (${displayName}) skipped due to empty/invalid coordinates.`);
+                            item.innerHTML = `
+                                <div class="location-title">${displayName}</div>
+                                <div class="location-details">
+                                    ${locationType ? `<div><strong>ಪ್ರಕಾರ:</strong> ${locationType}</div>` : ''}
+                                    <div class="coordinate-pill">📍 ${lat.toFixed(4)}, ${lng.toFixed(4)}</div>
+                                    ${badgeHTML}
+                                </div>`;
+
+                            item.addEventListener('mouseenter', () => { if (lockedMarker !== marker) { map.panTo([lat, lng]); marker.openPopup(); } });
+                            item.addEventListener('mouseleave', () => { if (lockedMarker !== marker) { marker.closePopup(); if (lockedMarker) lockedMarker.openPopup(); } });
+                            item.addEventListener('click', () => {
+                                if (activeItem) activeItem.classList.remove('active');
+                                item.classList.add('active'); activeItem = item; lockedMarker = marker;
+                                map.flyTo([lat, lng], 15, { animate: true, duration: 1 }); marker.openPopup();
+                                if (window.innerWidth <= 768) document.getElementById('map').scrollIntoView({ behavior: 'smooth' });
+                            });
+
+                            listContainer.appendChild(item);
+                        }
+                    });
+
+                    if(!hasData) {
+                        listContainer.innerHTML = `<div style="padding: 24px; text-align: center; color: var(--text-muted); font-size: 0.95em;">ಯಾವುದೇ ಸ್ಥಳಗಳು ಪಟ್ಟಿಯಲ್ಲಿಲ್ಲ.</div>`;
                     }
-                });
-
-                if (validPointsCount === 0) {
-                    listContainer.innerHTML = `
-                        <div style="padding: 20px; color: #d93025; background: #fce8e6; font-size: 0.9em;">
-                            <strong>No Coordinates Found:</strong><br><br>
-                            Connected to your live sheet, but could not parse values from the <code>location</code> column.
-                        </div>`;
+                },
+                error: function(error) {
+                    if (requestId !== loadRequestId) return; // Discard stale response if a newer request has been initiated
+                    console.error('Failed to load data:', error);
+                    listContainer.innerHTML = `<div style="padding: 24px; text-align: center; color: var(--text-muted); font-size: 0.95em;">ಡೇಟಾ ಲೋಡ್ ಆಗಲಿಲ್ಲ. ದಯವಿಟ್ಟು ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.</div>`;
                 }
-            },
-            error: function(err) {
-                listContainer.innerHTML = `<div style="padding:20px; color:red;">Network Error: Failed to fetch live rows.</div>`;
-            }
-        });
+            });
+        }
+
+        map.on('click', () => { if (activeItem) activeItem.classList.remove('active'); activeItem = null; lockedMarker = null; map.closePopup(); });
     </script>
 </body>
 </html>
