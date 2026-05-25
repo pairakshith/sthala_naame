@@ -374,20 +374,15 @@
         let markerClusterGroup = []; 
         let currentView = 'live'; 
 
-        function checkAdminAccess() {
+        // UI convenience toggle: append ?admin to the URL to show the pending view.
+        // This is not a security control; restrict Google Sheet permissions to limit data access.
+        function showAdminToggle() {
             const urlParams = new URLSearchParams(window.location.search);
-            const adminToken = urlParams.get('admin');
-            const SECRET_PASSWORD = 'kalasa75'; 
             const toggleContainer = document.querySelector('.view-toggle-container');
-
-            if (adminToken === SECRET_PASSWORD) {
-                toggleContainer.style.display = 'flex';
-            } else {
-                toggleContainer.style.display = 'none';
-            }
+            toggleContainer.style.display = urlParams.has('admin') ? 'flex' : 'none';
         }
 
-        checkAdminAccess();
+        showAdminToggle();
         loadMapData(MASTER_DATA_URL, false);
 
         function switchView(viewTarget) {
