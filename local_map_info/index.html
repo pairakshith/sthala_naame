@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="kn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ಸ್ಥಳಗಳ ವಿವರ: Live Heritage Map</title>
+    
+    <link href="https://unpkg.com/maplibre-gl@4.1.2/dist/maplibre-gl.css" rel="stylesheet" />
+    <script src="https://unpkg.com/maplibre-gl@4.1.2/dist/maplibre-gl.js"></script>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Noto+Sans+Kannada:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+    <div id="sidebar">
+        <div class="sidebar-header" id="header-bg">
+            <h2 id="header-title">ಸ್ಥಳಗಳ ವಿವರ: ಪ್ರಕಟಿತ ನಕ್ಷೆ</h2>
+            <p>MapLibre GL Vector Engine</p>
+            
+            <button class="submit-data-btn" id="openFormBtn">
+                📍 ಹೊಸ ಸ್ಥಳ ಸೇರಿಸಿ (Add Data)
+            </button>
+            
+            <div class="view-toggle-container">
+                <button class="toggle-btn active" id="btn-live">✅ Approved</button>
+                <button class="toggle-btn" id="btn-pending">⏳ Pending Queue</button>
+            </div>
+        </div>
+        <div id="list-container"></div>
+    </div>
+
+    <div id="map">
+        <div class="layer-switcher">
+            <button class="layer-btn active" id="style-road">🗺️ Map</button>
+            <button class="layer-btn" id="style-sat">🛰️ Satellite</button>
+        </div>
+    </div>
+
+    <script src="js/map.js"></script>
+</body>
+</html>
